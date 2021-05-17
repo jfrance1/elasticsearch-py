@@ -149,8 +149,8 @@ class AIOHttpConnection(AsyncConnection):
 
         if http_auth is not None:
             if isinstance(http_auth, (tuple, list)):
-                http_auth = ":".join(http_auth)
-            self.headers.update(urllib3.make_headers(basic_auth=http_auth))
+                http_auth = tuple(http_auth)
+            self.session.auth = http_auth
 
         # if providing an SSL context, raise error if any other SSL related flag is used
         if ssl_context and (
