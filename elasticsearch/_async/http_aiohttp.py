@@ -228,10 +228,10 @@ class AIOHttpConnection(AsyncConnection):
         self._http_auth = http_auth
         self._ssl_context = ssl_context
 
-        access_key = kwargs.get('access_key', default=None)
-        secret_key = kwargs.get('secret_key', default=None)
-        service = kwargs.get('service', default=None)
-        region = kwargs.get('region', default=None)
+        access_key = kwargs.get('access_key', None)
+        secret_key = kwargs.get('secret_key', None)
+        service = kwargs.get('service', None)
+        region = kwargs.get('region', None)
         self.request_signer = AwsRequestSigner(region, access_key, secret_key, service)
 
     async def perform_request(
