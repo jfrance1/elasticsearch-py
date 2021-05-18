@@ -16,9 +16,11 @@
 #  under the License.
 
 import asyncio
+import hashlib
 import os
 import ssl
 import warnings
+import json
 
 import urllib3  # type: ignore
 
@@ -33,6 +35,8 @@ from ..exceptions import (
 from ..utils import _client_meta_version
 from ._extra_imports import aiohttp, aiohttp_exceptions, yarl
 from .compat import get_running_loop
+
+from aws_request_signer import AwsRequestSigner
 
 # sentinel value for `verify_certs`.
 # This is used to detect if a user is passing in a value
@@ -224,6 +228,12 @@ class AIOHttpConnection(AsyncConnection):
         self._http_auth = http_auth
         self._ssl_context = ssl_context
 
+        access_key = kwargs.get('access_key', default=None)
+        secret_key = kwargs.get('secret_key', default=None)
+        service = kwargs.get('service', default=None)
+        region = kwargs.get('region', default=None)
+        self.request_signer = AwsRequestSigner(region, access_key, secret_key, service)
+
     async def perform_request(
         self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None
     ):
@@ -283,6 +293,15 @@ class AIOHttpConnection(AsyncConnection):
             body = self._gzip_compress(body)
             req_headers["content-encoding"] = "gzip"
 
+        content_hash = hashlib.sha256(json.dumps(body)).hexdigest() if isinstance(body, dict) else hashlib.sha256(body).hexdigest()
+        req_headers.update(
+            self.request_signer.sign_with_headers(
+                method,
+                url,
+                headers=req_headers,
+                content_hash=content_hash
+            )
+        )
         start = self.loop.time()
         try:
             async with self.session.request(
